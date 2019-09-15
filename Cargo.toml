@@ -1,0 +1,20 @@
+[package]
+name = "except"
+version = "0.2.0"
+authors = ["__JM_Joy__ <918734043@qq.com>"]
+edition = "2018"
+description = "For Rust, a better `try/catch`-like error handler rather than `result`."
+repository = "https://github.com/jmjoy/except.git"
+license-file = "LICENSE"
+readme = "README.md"
+keywords = ["try", "try-catch", "throw", "exception", "panic", "error", "error-handler"]
+exclude = [
+    ".gitignore",
+    ".travis.yml",
+    "rustfmt.toml"
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
