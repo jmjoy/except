@@ -130,7 +130,7 @@ Expand to:
 ```rust
 enum __AnonymousExceptionBucket_A__ {
     MyException { message: String },
-    MyAnotherException(message: String),
+    MyAnotherException { message: String },
 }
 
 fn do_something() -> Result<(), __AnonymousExceptionBucket_A__> {
@@ -145,11 +145,13 @@ enum __AnonymousExceptionBucket_B__ {
 fn do_something_first() -> Result<(), __AnonymousExceptionBucket_B__> {
     return Err(MyAnotherException::new("Another little error"));
 }
+
+// Omit some auto generated trait implementation...
 ```
 
 
 
-How to handle these exception, it's also easy:
+How to handle these exception? it's also easy:
 
 ```rust
 try { // try will return a `Result`, because it's a sugar.
