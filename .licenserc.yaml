@@ -12,16 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[package]
-name = "except"
-version = "0.3.0"
-authors = ["jmjoy <jmjoy@apache.org>"]
-edition = "2021"
-description = "Exception: The only `Error` you deserve."
-repository = "https://github.com/jmjoy/except"
-license = "Apache-2.0"
-readme = "README.md"
-keywords = ["exception", "panic", "error"]
-rust-version = "1.68"
+header:
+  license:
+    spdx-id: Apache-2.0
+    copyright-owner: jmjoy
 
-[dependencies]
+  paths-ignore:
+    - '**/*.json'
+    - '**/*.lock'
+    - '**/*.md'
+    - '**/.gitignore'
+    - '**/.gitmodules'
+    - '.cargo'
+    - '.idea'
+    - '.vscode'
+    - 'LICENSE'
+    - 'vendor'
+
+  comment: on-failure
+
+dependency:
+  files:
+    - Cargo.toml
