@@ -70,7 +70,7 @@ jobs:
           toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN }}
           command: fmt
           args: --all -- --check
-        if: ${{ matrix.os != "windows-2022" }}
+        if: matrix.os != 'windows-2022'
 
       - name: Cargo clippy
         uses: actions-rs/cargo@v1
