@@ -14,7 +14,7 @@
 
 [package]
 name = "except"
-version = "0.3.0"
+version = "0.2.0"
 authors = ["jmjoy <jmjoy@apache.org>"]
 edition = "2021"
 description = "Exception: The only `Error` you deserve."
