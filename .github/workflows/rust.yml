@@ -51,7 +51,6 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN }}
-          override: true
           components: rustfmt
 
       - name: Setup cargo cache
