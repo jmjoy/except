@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[package]
-name = "except"
-version = "0.3.0"
-authors = ["jmjoy <jmjoy@apache.org>"]
-edition = "2021"
-description = "Exception: The only `Error` you deserve."
-repository = "https://github.com/jmjoy/except"
-license = "Apache-2.0"
-readme = "README.md"
-keywords = ["exception", "panic", "error"]
-rust-version = "1.68"
-
-[dependencies]
+[toolchain]
+channel = "1.68"
+components = ["clippy"]
