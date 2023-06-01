@@ -12,118 +12,169 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![feature(error_generic_member_access)]
+#![feature(provide_any)]
 #![warn(rust_2018_idioms, missing_docs)]
 #![warn(clippy::dbg_macro, clippy::print_stdout)]
 #![doc = include_str!("../README.md")]
 
 use std::{
-    any::{type_name, Any, TypeId},
-    error::Error,
+    any::{type_name, Any, Demand, TypeId},
+    backtrace::{Backtrace, BacktraceStatus},
+    borrow::Cow,
+    error,
     fmt::{self, Debug, Display},
-    sync::Arc,
+    result,
 };
 
-struct InnerException {
-    kind_id: TypeId,
-    kind: &'static str,
-    message: String,
+struct Type {
+    type_id: TypeId,
+    type_name: &'static str,
+}
+
+impl Type {
+    fn new<T: 'static>() -> Self {
+        Self {
+            type_id: TypeId::of::<T>(),
+            type_name: type_name::<T>(),
+        }
+    }
+}
+
+/// Alias of [Result](result::Result)<T, [Error]>;
+pub type Result<T> = result::Result<T, Error>;
+
+/// The only one [`Error`].
+pub struct Error {
+    r#type: Type,
+    sub_type: Type,
+    message: Cow<'static, str>,
+    backtrace: Backtrace,
     data: Option<Box<dyn Any + Send + Sync>>,
-    source: Option<Exception>,
+    source: Option<Box<dyn error::Error + Send + Sync + 'static>>,
 }
 
-/// The only `Error` you deserve.
-#[derive(Clone)]
-pub struct Exception {
-    inner: Arc<InnerException>,
-}
-
-impl Exception {
-    /// New [Exception] with kind and message.
-    pub fn new<T: 'static>(message: impl Into<String>) -> Self {
-        Self {
-            inner: Arc::new(InnerException {
-                kind_id: TypeId::of::<T>(),
-                kind: type_name::<T>(),
-                message: message.into(),
-                data: None,
-                source: None,
-            }),
-        }
-    }
-
-    /// New [Exception] with kind, message and data.
-    pub fn new2<T: 'static>(message: impl Into<String>, data: impl Any + Send + Sync) -> Self {
-        Self {
-            inner: Arc::new(InnerException {
-                kind_id: TypeId::of::<T>(),
-                kind: type_name::<T>(),
-                message: message.into(),
-                data: Some(Box::new(data)),
-                source: None,
-            }),
-        }
-    }
-
-    /// New [Exception] with kind, message and source.
-    pub fn new3<T: 'static>(message: impl Into<String>, source: &Exception) -> Self {
-        Self {
-            inner: Arc::new(InnerException {
-                kind_id: TypeId::of::<T>(),
-                kind: type_name::<T>(),
-                message: message.into(),
-                data: None,
-                source: Some(source.clone()),
-            }),
-        }
-    }
-
-    /// New [Exception] with kind, message, data and source.
-    pub fn new4<T: 'static>(
-        message: impl Into<String>, data: impl Any + Send + Sync, source: &Exception,
-    ) -> Self {
-        Self {
-            inner: Arc::new(InnerException {
-                kind_id: TypeId::of::<T>(),
-                kind: type_name::<T>(),
-                message: message.into(),
-                data: Some(Box::new(data)),
-                source: Some(source.clone()),
-            }),
-        }
-    }
-
-    /// Detect [Exception] is belong to the kind.
+impl Error {
+    /// Detect [Exception] is belong to the type.
+    #[inline]
     pub fn is<T: 'static>(&self) -> bool {
-        self.inner.kind_id == TypeId::of::<T>()
+        self.r#type.type_id == TypeId::of::<T>()
+    }
+
+    /// Detect [Error] is belong to the sub type.
+    #[inline]
+    pub fn is_sub<T: 'static>(&self) -> bool {
+        self.sub_type.type_id == TypeId::of::<T>()
     }
 
     /// Get immutable reference data.
     pub fn data<D: 'static>(&self) -> Option<&D> {
-        self.inner
-            .data
+        self.data
             .as_deref()
             .and_then(|data| (data as &dyn Any).downcast_ref())
     }
-}
 
-impl Debug for Exception {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Exception")
-            .field("kind", &self.inner.kind)
-            .field("message", &self.inner.message)
-            .finish()
+    /// Convert into data.
+    pub fn into_data<D: 'static>(self) -> Option<D> {
+        self.data
+            .and_then(|data| data.downcast().ok())
+            .map(|data| *data)
     }
 }
 
-impl Display for Exception {
+impl Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        Display::fmt(&self.inner.message, f)
+        write!(f, "{}", &self.message)?;
+
+        if f.alternate() {
+            write!(f, "\nType: {}", &self.r#type.type_name)?;
+            if self.sub_type.type_id != TypeId::of::<()>() {
+                write!(f, "\nSub type: {}", &self.sub_type.type_name)?;
+            }
+        }
+
+        if self.backtrace.status() == BacktraceStatus::Captured {
+            write!(f, "\nBacktrace:\n{}", &self.backtrace.to_string())?;
+        }
+
+        Ok(())
     }
 }
 
-impl Error for Exception {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        self.inner.source.as_ref().map(|s| s as _)
+impl Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", &self.message)
+    }
+}
+
+impl error::Error for Error {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        self.source.as_deref().map(|s| s as _)
+    }
+
+    fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+        demand.provide_ref(&self.r#type);
+        demand.provide_ref(&self.backtrace);
+    }
+}
+
+/// Builder of [Error].
+pub struct ErrorBuilder {
+    r#type: Type,
+    sub_type: Option<Type>,
+    message: Option<Cow<'static, str>>,
+    data: Option<Box<dyn Any + Send + Sync>>,
+    source: Option<Box<dyn error::Error + Send + Sync + 'static>>,
+}
+
+impl ErrorBuilder {
+    /// Create error builder.
+    pub fn new<T: 'static>() -> Self {
+        Self {
+            r#type: Type::new::<T>(),
+            sub_type: None,
+            message: None,
+            data: None,
+            source: None,
+        }
+    }
+
+    /// Set sub type.
+    pub fn sub_type<T: 'static>(mut self) -> Self {
+        self.sub_type = Some(Type::new::<T>());
+        self
+    }
+
+    /// Set message.
+    pub fn message(mut self, message: impl Into<Cow<'static, str>>) -> Self {
+        self.message = Some(message.into());
+        self
+    }
+
+    /// Set data.
+    pub fn data(mut self, data: impl Any + Send + Sync) -> Self {
+        self.data = Some(Box::new(data));
+        self
+    }
+
+    /// Set source.
+    pub fn source(
+        mut self, source: impl Into<Box<dyn error::Error + Send + Sync + 'static>>,
+    ) -> Self {
+        self.source = Some(source.into());
+        self
+    }
+
+    /// Build error.
+    pub fn build(self) -> Error {
+        Error {
+            r#type: self.r#type,
+            sub_type: self.sub_type.unwrap_or(Type::new::<()>()),
+            message: self.message.unwrap_or_default(),
+            backtrace: Backtrace::capture(),
+            data: self.data,
+            source: self.source,
+        }
     }
 }
 
@@ -131,16 +182,18 @@ impl Error for Exception {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_exception_is() {
-        pub struct FooError;
-        let e = Exception::new::<FooError>("foo error");
-        assert!(e.is::<FooError>());
-    }
+    trait AssertSendSync: Send + Sync + 'static {}
+
+    impl AssertSendSync for Error {}
 
     #[test]
-    fn test_exception_data() {
-        let e = Exception::new2::<()>("foo error", 100usize);
-        assert_eq!(e.data::<usize>(), Some(&100usize));
+    fn test_exception() {
+        pub struct FooError;
+        let err = ErrorBuilder::new::<FooError>().message("foo error").build();
+        assert!(err.is::<FooError>());
+        assert!(err.is_sub::<()>());
+        assert_eq!(err.to_string(), "foo error");
+
+        dbg!(err);
     }
 }

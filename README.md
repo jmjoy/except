@@ -1,6 +1,8 @@
 # Except
 
-Exception: The only `Error` you deserve.
+The only one `Error`.
+
+**only available in nightly toolchain now.**
 
 ## Why?
 
@@ -35,32 +37,31 @@ application.
 
 *This is just a personal opinion.*
 
-An Error(Exception) actually only contains the following elements:
+An Error actually only contains the following elements:
 
-- `code(kind)`: Used to determine whether two Errors(Exceptions) are of the same type.
-- `message`: String describing the Error(Exception).
-- `data`: Optional Error(Exception) data.
-- `backtrace`: Error(Exception) call stack.
-- `source`: Optional previous Error(Exception).
+- `type`: Auto generated id, used to determine whether the Error is a certain type.
+- `sub_type`: Auto generated id, used to determine whether the Error is a certain sub type, used to supplement type.
+- `message`: String describing the Error.
+- `data`: Optional Error data.
+- `backtrace`: Error call stack.
+- `source`: Optional previous Error.
 
-For Rust, the `message`, `backtrace`, `source` already exists in `std::error::Error`.
+For Rust, the `message`, ~~`backtrace`,~~ `source` already exists in `std::error::Error`.
 
-Then I prefer to auto generate the `code(kind)`, I think `TypeId` is a solution.
+Then I prefer to auto generate the `type`, I think `TypeId` is a solution.
 
 For `data`, I don't have the best idea, because it may be of any type. In order to achieve
-only one Error(Exception), I chose to use `Box<dyn Any>` internally to save it.
+only one Error, I chose to use `Box<dyn Any>` internally to save it.
 
 ## Example
 
-I use the name `Exception` here because it is less commonly used in Rust.
-
 ```rust
-use except::Exception;
+use except::ErrorBuilder;
 
 pub struct MyErrorKind;
 
-pub fn foo() -> Result<(), Exception> {
-    Err(Exception::new::<MyErrorKind>("this is my error"))
+pub fn foo() -> except::Result<()> {
+    Err(ErrorBuilder::new::<MyErrorKind>().message("this is my error").build())
 }
 
 pub fn main() {

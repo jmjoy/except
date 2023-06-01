@@ -14,10 +14,10 @@
 
 [package]
 name = "except"
-version = "0.2.0"
+version = "0.3.0-dev"
 authors = ["jmjoy <jmjoy@apache.org>"]
 edition = "2021"
-description = "Exception: The only `Error` you deserve."
+description = "The only one `Error`."
 repository = "https://github.com/jmjoy/except"
 license = "Apache-2.0"
 readme = "README.md"
