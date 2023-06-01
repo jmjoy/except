@@ -26,9 +26,38 @@ env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: "1"
   RUSTFLAGS: "-D warnings"
-  RUST_NIGHTLY_TOOLCHAIN: "nightly-2023-05-15"
+  RUST_NIGHTLY_TOOLCHAIN: "nightly-2023-05-19"
 
 jobs:
+  required:
+    name: Required
+    needs:
+      - rust
+      - license
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Check results
+        run: |
+          [[ ${{ needs.rust.result }} == 'success' ]] || exit 1;
+          [[ ${{ needs.license.result }} == 'success' ]] || exit 1;
+
+  license:
+    name: License
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+      - name: Check License Header
+        uses: apache/skywalking-eyes/header/@d299844e334855087f18ae1fe3c81ae8d22bc282
+        with:
+          config: .licenserc.yaml
+      - name: Check Dependencies License
+        uses: apache/skywalking-eyes/dependency/@d299844e334855087f18ae1fe3c81ae8d22bc282
+        with:
+          config: .licenserc.yaml
+
   rust:
     name: Rust
 
@@ -51,7 +80,7 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           toolchain: ${{ env.RUST_NIGHTLY_TOOLCHAIN }}
-          components: rustfmt
+          components: rustfmt, clippy
 
       - name: Setup cargo cache
         uses: actions/cache@v3
